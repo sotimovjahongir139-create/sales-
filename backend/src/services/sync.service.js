@@ -5,12 +5,17 @@ const amocrm = require('./amocrm.service');
 
 // amoCRM's /notes list endpoints don't reliably honor filter[created_at][from]
 // (confirmed empirically against this account), so we cannot ask amoCRM to
-// only hand us "new since X" notes by date. Instead we page through notes
-// (ordered desc by created_at, which does correlate with note id in practice)
-// and stop as soon as we reach a page made up entirely of note ids we've
-// already processed before — tracked per entity type in SyncState. This keeps
-// steady-state syncs cheap (1-2 requests) instead of rescanning full history
-// every run.
+// only hand us "new since X" notes by date. order[created_at]=desc is ALSO
+// unreliable in practice (confirmed empirically: page 1 does not actually
+// return the most recent notes) — so note id cannot be used as a monotonic
+// cursor either; a prior version of this code tracked a per-entity-type
+// "highest note id seen" high-water mark and it silently broke ingestion,
+// because a page fetched early can contain a higher id than pages fetched
+// later that hold genuinely unprocessed notes, permanently hiding them once
+// the mark passed them. Instead: check each page's notes against the DB
+// directly (existing amocrmCallId), and stop paging only once an entire page
+// turns up nothing but already-known notes. Correct regardless of amoCRM's
+// ordering, at the cost of rescanning up to MAX_PAGES_PER_RUN pages every run.
 const MAX_PAGES_PER_RUN = 8;
 
 const client = axios.create({
@@ -75,27 +80,27 @@ async function upsertCallFromNote(note, entityType, salespersonId) {
 }
 
 async function syncEntityType(entityType, salesperson) {
-  const stateKey = `notes:${entityType}`;
-  const state = await prisma.syncState.upsert({
-    where: { key: stateKey },
-    update: {},
-    create: { key: stateKey, lastNoteId: 0 },
-  });
-
   let fetched = 0;
   let created = 0;
   let skippedUnattributed = 0;
-  let highestNoteIdSeen = state.lastNoteId;
 
   for (let page = 1; page <= MAX_PAGES_PER_RUN; page += 1) {
     const notes = await amocrm.fetchCallNotes({ entityType, page });
     if (notes.length === 0) break;
 
-    const newNotes = notes.filter((n) => n.id > state.lastNoteId);
+    const candidateIds = notes.map((n) => `${entityType}:${n.id}`);
+    const existingRows = await prisma.call.findMany({
+      where: { amocrmCallId: { in: candidateIds } },
+      select: { amocrmCallId: true },
+    });
+    const existingSet = new Set(existingRows.map((r) => r.amocrmCallId));
 
-    for (const note of newNotes) {
+    let newOnThisPage = 0;
+    for (const note of notes) {
+      const amocrmCallId = `${entityType}:${note.id}`;
+      if (existingSet.has(amocrmCallId)) continue;
+      newOnThisPage += 1;
       fetched += 1;
-      if (note.id > highestNoteIdSeen) highestNoteIdSeen = note.id;
 
       if (!belongsToSalesperson(note, salesperson.amocrmUserId)) {
         skippedUnattributed += 1;
@@ -105,16 +110,9 @@ async function syncEntityType(entityType, salesperson) {
       if (result.created) created += 1;
     }
 
-    // Reached previously-synced territory (partial or empty overlap), or
-    // this was the last page of data available either way.
-    if (newNotes.length < notes.length || notes.length < 250) break;
-  }
-
-  if (highestNoteIdSeen > state.lastNoteId) {
-    await prisma.syncState.update({
-      where: { key: stateKey },
-      data: { lastNoteId: highestNoteIdSeen },
-    });
+    // A page made up entirely of already-known notes means we've caught up.
+    if (newOnThisPage === 0) break;
+    if (notes.length < 250) break;
   }
 
   return { fetched, created, skippedUnattributed };
