@@ -7,6 +7,8 @@ export default function Calls() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [analyzingId, setAnalyzingId] = useState(null);
+  const [rowErrors, setRowErrors] = useState({});
 
   useEffect(() => {
     api
@@ -24,6 +26,30 @@ export default function Calls() {
       .finally(() => setLoading(false));
   }, []);
 
+  async function handleAnalyze(callId) {
+    setAnalyzingId(callId);
+    setRowErrors((prev) => ({ ...prev, [callId]: undefined }));
+    setCalls((prev) => prev.map((c) => (c.id === callId ? { ...c, analysisStatus: 'PROCESSING' } : c)));
+
+    try {
+      const res = await api.post(`/calls/${callId}/analyze`);
+      const updated = res.data.call;
+      setCalls((prev) =>
+        prev.map((c) =>
+          c.id === callId
+            ? { ...c, analysisStatus: updated.analysisStatus, overallScore: updated.analysis?.overallScore ?? null }
+            : c
+        )
+      );
+    } catch (err) {
+      const message = err.response?.data?.error || 'Tahlilda xatolik yuz berdi.';
+      setRowErrors((prev) => ({ ...prev, [callId]: message }));
+      setCalls((prev) => prev.map((c) => (c.id === callId ? { ...c, analysisStatus: 'FAILED' } : c)));
+    } finally {
+      setAnalyzingId(null);
+    }
+  }
+
   return (
     <div>
       <div className="panel">
@@ -35,7 +61,9 @@ export default function Calls() {
         )}
         {loading && <div className="empty-state">Yuklanmoqda...</div>}
         {error && <div className="error-text">{error}</div>}
-        {!loading && !error && <CallsTable calls={calls} />}
+        {!loading && !error && (
+          <CallsTable calls={calls} analyzingId={analyzingId} rowErrors={rowErrors} onAnalyze={handleAnalyze} />
+        )}
       </div>
     </div>
   );

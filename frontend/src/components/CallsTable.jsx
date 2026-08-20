@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { formatDuration, formatTimeUz, scoreColor, ANALYSIS_STATUS_LABELS, DIRECTION_LABELS } from '../lib/format';
 
-export default function CallsTable({ calls }) {
+export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze }) {
   const navigate = useNavigate();
 
   if (!calls || calls.length === 0) {
@@ -18,27 +18,48 @@ export default function CallsTable({ calls }) {
           <th>Davomiylik</th>
           <th>AI baho</th>
           <th>Holat</th>
+          <th>Amal</th>
         </tr>
       </thead>
       <tbody>
-        {calls.map((call) => (
-          <tr key={call.id} onClick={() => navigate(`/calls/${call.id}`)}>
-            <td>{formatTimeUz(call.startedAt)}</td>
-            <td>{call.customerName || call.customerPhone || "Noma'lum"}</td>
-            <td>{DIRECTION_LABELS[call.direction] || call.direction}</td>
-            <td>{formatDuration(call.durationSeconds)}</td>
-            <td>
-              {call.overallScore !== null ? (
-                <span className="score-badge" style={{ background: scoreColor(call.overallScore) }}>
-                  {call.overallScore}
-                </span>
-              ) : (
-                '—'
-              )}
-            </td>
-            <td className="status-tag">{ANALYSIS_STATUS_LABELS[call.analysisStatus] || call.analysisStatus}</td>
-          </tr>
-        ))}
+        {calls.map((call) => {
+          const isAnalyzing = analyzingId === call.id || call.analysisStatus === 'PROCESSING';
+          const rowError = rowErrors?.[call.id];
+          const canAnalyze = call.recordingUrl && (call.analysisStatus === 'NOT_ANALYZED' || call.analysisStatus === 'FAILED');
+
+          return (
+            <tr key={call.id} onClick={() => navigate(`/calls/${call.id}`)}>
+              <td>{formatTimeUz(call.startedAt)}</td>
+              <td>{call.customerName || call.customerPhone || "Noma'lum"}</td>
+              <td>{DIRECTION_LABELS[call.direction] || call.direction}</td>
+              <td>{formatDuration(call.durationSeconds)}</td>
+              <td>
+                {call.overallScore !== null ? (
+                  <span className="score-badge" style={{ background: scoreColor(call.overallScore) }}>
+                    {call.overallScore}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </td>
+              <td className="status-tag">
+                {isAnalyzing ? 'Tahlil qilinmoqda...' : ANALYSIS_STATUS_LABELS[call.analysisStatus] || call.analysisStatus}
+              </td>
+              <td onClick={(e) => e.stopPropagation()}>
+                {canAnalyze && !isAnalyzing && (
+                  <button className="analyze-btn-sm" onClick={() => onAnalyze(call.id)}>
+                    {call.analysisStatus === 'FAILED' ? 'Qayta urinish' : 'Tahlil qilish'}
+                  </button>
+                )}
+                {isAnalyzing && <span className="status-pill">Tahlil qilinmoqda...</span>}
+                {!canAnalyze && !isAnalyzing && call.analysisStatus === 'NOT_ANALYZED' && (
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Audio yo'q</span>
+                )}
+                {rowError && <div className="error-text" style={{ fontSize: 12, marginTop: 4 }}>{rowError}</div>}
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );
