@@ -18,6 +18,16 @@ model SyncState {
   updatedAt  DateTime @updatedAt
 }
 
+// Key-value store for settings that need to be changeable from the UI
+// without server file access or a process restart (e.g. geminiApiKey) —
+// see settings.service.js. `value` is encrypted at rest for secret-shaped
+// entries; treat this table as write-only from the API's perspective.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 model Salesperson {
   id            String   @id @default(uuid())
   name          String

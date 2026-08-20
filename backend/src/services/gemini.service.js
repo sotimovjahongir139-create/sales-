@@ -4,18 +4,30 @@ const path = require('path');
 const crypto = require('crypto');
 const axios = require('axios');
 const env = require('../config/env');
+const settingsService = require('./settings.service');
 const { analysisResultSchema } = require('../lib/analysisSchema');
 
 // @google/genai ships as ESM; a dynamic import from this CommonJS file avoids
 // the require()/ESM interop bug in its published "require" entry point.
-let aiPromise;
-async function getClient() {
-  if (!aiPromise) {
-    aiPromise = import('@google/genai').then(
-      ({ GoogleGenAI }) => new GoogleGenAI({ apiKey: env.geminiApiKey })
-    );
+// Node caches the module import itself, but the client is rebuilt on every
+// call (cheap, local, no network) since the API key can now change at
+// runtime via Sozlamalar — a client built once at module load would keep
+// using whatever key was live at process start.
+let genaiModulePromise;
+async function getGenaiModule() {
+  if (!genaiModulePromise) {
+    genaiModulePromise = import('@google/genai');
   }
-  return aiPromise;
+  return genaiModulePromise;
+}
+
+async function getClient() {
+  const apiKey = await settingsService.getGeminiApiKey();
+  if (!apiKey) {
+    throw new Error('Gemini API kaliti sozlanmagan.');
+  }
+  const { GoogleGenAI } = await getGenaiModule();
+  return new GoogleGenAI({ apiKey });
 }
 
 const ANALYSIS_PROMPT = `
@@ -109,43 +121,67 @@ function extractJson(text) {
   return JSON.parse(cleaned);
 }
 
-async function analyzeCallRecording(recordingUrl) {
-  if (!env.geminiApiKey) {
-    throw new Error('Gemini API kaliti sozlanmagan.');
-  }
+// Gemini's JSON output is occasionally malformed even with
+// responseMimeType: 'application/json' (observed directly — not every
+// attempt, but frequently enough to break "click the button, it works").
+// Re-asking (same uploaded file, no re-download/re-upload needed) resolves
+// it in practice; if every attempt fails, the raw response snippet goes
+// into the thrown error so it ends up in analysisError — visible through
+// the app itself, no server log access ever needed to diagnose this again.
+const MAX_GENERATION_ATTEMPTS = 3;
 
-  const { tmpPath, mimeType } = await downloadRecording(recordingUrl);
-
-  try {
-    const ai = await getClient();
-    const { createUserContent, createPartFromUri } = await import('@google/genai');
-
-    const uploaded = await ai.files.upload({ file: tmpPath, config: { mimeType } });
-    const activeFile = await waitForFileActive(ai, uploaded.name);
-
+async function generateAnalysis(ai, contentsArgs) {
+  let lastError;
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
     const response = await ai.models.generateContent({
       model: env.geminiModel,
-      contents: createUserContent([
-        createPartFromUri(activeFile.uri, activeFile.mimeType),
-        ANALYSIS_PROMPT,
-      ]),
-      config: {
-        responseMimeType: 'application/json',
-      },
+      contents: contentsArgs,
+      config: { responseMimeType: 'application/json' },
     });
 
     const text = response.text;
     if (!text) {
-      throw new Error('Gemini javob bermadi.');
+      lastError = new Error('Gemini javob bermadi.');
+      continue;
     }
 
-    const parsedJson = extractJson(text);
+    let parsedJson;
+    try {
+      parsedJson = extractJson(text);
+    } catch (err) {
+      const snippet = text.slice(0, 200).replace(/\s+/g, ' ');
+      lastError = new Error(`Gemini JSON formatida javob bermadi: ${err.message}. Boshlanishi: "${snippet}"`);
+      continue;
+    }
+
     const validated = analysisResultSchema.safeParse(parsedJson);
     if (!validated.success) {
-      throw new Error('Gemini javobi kutilgan JSON tuzilishiga mos kelmadi.');
+      lastError = new Error('Gemini javobi kutilgan JSON tuzilishiga mos kelmadi.');
+      continue;
     }
 
     return { result: validated.data, raw: parsedJson };
+  }
+  throw lastError;
+}
+
+async function analyzeCallRecording(recordingUrl) {
+  const ai = await getClient(); // throws with the Uzbek "kalit sozlanmagan" message if unset
+
+  const { tmpPath, mimeType } = await downloadRecording(recordingUrl);
+
+  try {
+    const { createUserContent, createPartFromUri } = await getGenaiModule();
+
+    const uploaded = await ai.files.upload({ file: tmpPath, config: { mimeType } });
+    const activeFile = await waitForFileActive(ai, uploaded.name);
+
+    const contents = createUserContent([
+      createPartFromUri(activeFile.uri, activeFile.mimeType),
+      ANALYSIS_PROMPT,
+    ]);
+
+    return await generateAnalysis(ai, contents);
   } finally {
     fs.unlink(tmpPath, () => {});
   }
