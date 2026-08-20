@@ -1,5 +1,4 @@
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
 const { ApiError } = require('../middleware/errorHandler');
 const prisma = require('../lib/prisma');
 const dateRange = require('../lib/dateRange');
@@ -10,7 +9,7 @@ const router = express.Router();
 const DEFAULT_LIMIT = 100;
 const MAX_LIMIT = 500;
 
-router.get('/', requireAuth, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const { period, date } = req.query;
     const where = {};
@@ -40,7 +39,7 @@ router.get('/', requireAuth, async (req, res, next) => {
   }
 });
 
-router.get('/:id', requireAuth, async (req, res, next) => {
+router.get('/:id', async (req, res, next) => {
   try {
     const call = await prisma.call.findUnique({
       where: { id: req.params.id },
@@ -56,7 +55,7 @@ router.get('/:id', requireAuth, async (req, res, next) => {
   }
 });
 
-router.post('/:id/analyze', requireAuth, async (req, res, next) => {
+router.post('/:id/analyze', async (req, res, next) => {
   try {
     const call = await analysisService.analyzeCall(req.params.id);
     res.json({ call });

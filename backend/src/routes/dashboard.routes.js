@@ -1,11 +1,10 @@
 const express = require('express');
-const { requireAuth } = require('../middleware/auth');
 const { ApiError } = require('../middleware/errorHandler');
 const dashboardService = require('../services/dashboard.service');
 
 const router = express.Router();
 
-router.get('/', requireAuth, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const { period, date } = req.query;
     if (!['daily', 'weekly', 'monthly'].includes(period)) {

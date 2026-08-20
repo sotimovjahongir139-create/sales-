@@ -10,7 +10,6 @@ function required(name) {
 
 const env = {
   databaseUrl: required('DATABASE_URL'),
-  jwtSecret: required('JWT_SECRET'),
 
   amocrmDomain: process.env.AMOCRM_DOMAIN || '',
   amocrmAccessToken: process.env.AMOCRM_ACCESS_TOKEN || '',

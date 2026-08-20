@@ -7,14 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String   @id @default(uuid())
-  username     String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
 // amoCRM's /notes endpoints don't reliably honor created_at range filters
 // (confirmed empirically), so incremental sync tracks progress by note id
 // instead — note ids are monotonically increasing, dates are not trustworthy

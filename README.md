@@ -7,6 +7,12 @@ results in an Uzbek-language dashboard.
 This is an independent project — its own repo, backend, frontend, database, and
 environment variables — deployed separately from any other system.
 
+**No authentication.** There is no login, no user accounts, no access control of any
+kind — every API route and every page is open to anyone who can reach the URL. This was
+a deliberate choice to remove a credentials/deployment deadlock, not an oversight. If
+this ever needs to not be fully public, put it behind a VPN, an IP allowlist, or a
+reverse-proxy auth layer (e.g. basic auth in nginx) — don't rely on the app itself.
+
 ## Architecture
 
 ```
@@ -60,7 +66,7 @@ cd backend
 npm install
 cp .env.example .env   # fill in real values, see below
 npx prisma migrate dev
-node scripts/seed.js   # creates the admin user + Asadbek salesperson record
+node scripts/seed.js   # creates the Asadbek salesperson record
 npm run dev            # starts on PORT (default 4000)
 ```
 
@@ -69,7 +75,6 @@ npm run dev            # starts on PORT (default 4000)
 | Variable | Notes |
 |---|---|
 | `DATABASE_URL` | Postgres connection string for this app's **own** database |
-| `JWT_SECRET` | random secret, e.g. `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
 | `AMOCRM_DOMAIN` | e.g. `yourcompany.amocrm.ru` |
 | `AMOCRM_ACCESS_TOKEN` | long-lived token, read-only usage only (GET requests) |
 | `GEMINI_API_KEY` | server-side only, never sent to the frontend |
@@ -77,14 +82,6 @@ npm run dev            # starts on PORT (default 4000)
 | `TIMEZONE` | `Asia/Tashkent` |
 | `SYNC_INTERVAL_MINUTES` | how often the background amoCRM sync runs |
 | `ASADBEK_AMOCRM_USER_ID` | Asadbek's numeric amoCRM user id |
-
-### Seeding the admin login
-
-```bash
-SEED_ADMIN_USERNAME=admin SEED_ADMIN_PASSWORD='YourPassword!' node scripts/seed.js
-```
-
-Re-running the seed script updates the password for an existing username.
 
 ## Frontend setup
 
@@ -95,7 +92,7 @@ cp .env.example .env   # set VITE_BACKEND_URL if backend isn't on localhost:4000
 npm run dev            # starts on port 5173
 ```
 
-Open `http://localhost:5173` — you'll land on the login page first.
+Open `http://localhost:5173` — it opens straight to the dashboard, no login.
 
 ## Production deployment
 
@@ -111,19 +108,18 @@ cd backend && npm start        # run behind a process manager (pm2, systemd, a N
 
 Point `FRONTEND_URL` (backend, for CORS) and `VITE_BACKEND_URL` (frontend build) at the
 real deployed URLs, and run `npx prisma migrate deploy` instead of `migrate dev` for the
-production database. Seed the admin user once against the production database:
+production database. Then seed the Asadbek salesperson record once:
 
 ```bash
-SEED_ADMIN_USERNAME=admin SEED_ADMIN_PASSWORD='...' node scripts/seed.js
+node scripts/seed.js
 ```
 
 ## API summary
 
-- `POST /api/auth/login`
 - `GET /api/dashboard?period=daily|weekly|monthly&date=YYYY-MM-DD`
 - `GET /api/calls`, `GET /api/calls/:id`
 - `POST /api/calls/:id/analyze` — sends the recording to Gemini (only when clicked, not automatic — controls API cost)
 - `POST /api/sync/amocrm` — manual sync trigger (also runs automatically on `SYNC_INTERVAL_MINUTES`)
 - `GET /api/health`
 
-All routes except `/auth/login` and `/health` require a `Bearer` JWT.
+No route requires authentication — see the note at the top of this README.
