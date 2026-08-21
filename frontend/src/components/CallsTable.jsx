@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { formatDuration, formatTimeUz, scoreColor, ANALYSIS_STATUS_LABELS, DIRECTION_LABELS } from '../lib/format';
+import { formatDuration, formatTimeUz, scoreColor, analysisStatusLabel, isQuotaError, DIRECTION_LABELS } from '../lib/format';
 
 export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze }) {
   const navigate = useNavigate();
@@ -26,6 +26,7 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
           const isAnalyzing = analyzingId === call.id || call.analysisStatus === 'PROCESSING';
           const rowError = rowErrors?.[call.id];
           const canAnalyze = call.recordingUrl && (call.analysisStatus === 'NOT_ANALYZED' || call.analysisStatus === 'FAILED');
+          const quotaFailed = call.analysisStatus === 'FAILED' && isQuotaError(call.analysisError);
 
           return (
             <tr key={call.id} onClick={() => navigate(`/calls/${call.id}`)}>
@@ -43,7 +44,7 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
                 )}
               </td>
               <td className="status-tag">
-                {isAnalyzing ? 'Tahlil qilinmoqda...' : ANALYSIS_STATUS_LABELS[call.analysisStatus] || call.analysisStatus}
+                {isAnalyzing ? 'Tahlil qilinmoqda...' : analysisStatusLabel(call)}
               </td>
               <td onClick={(e) => e.stopPropagation()}>
                 {canAnalyze && !isAnalyzing && (
@@ -54,6 +55,11 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
                 {isAnalyzing && <span className="status-pill">Tahlil qilinmoqda...</span>}
                 {!canAnalyze && !isAnalyzing && call.analysisStatus === 'NOT_ANALYZED' && (
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Audio yo'q</span>
+                )}
+                {quotaFailed && !isAnalyzing && (
+                  <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>
+                    AI kvotasi tugagan, birozdan so'ng qayta urining.
+                  </div>
                 )}
                 {rowError && <div className="error-text" style={{ fontSize: 12, marginTop: 4 }}>{rowError}</div>}
               </td>

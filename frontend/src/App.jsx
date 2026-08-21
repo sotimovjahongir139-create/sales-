@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Calls from './pages/Calls';
 import CallDetail from './pages/CallDetail';
 import Settings from './pages/Settings';
+import Sotuvchi from './pages/Sotuvchi';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="calls" element={<Calls />} />
         <Route path="calls/:id" element={<CallDetail />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="sotuvchi" element={<Sotuvchi />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

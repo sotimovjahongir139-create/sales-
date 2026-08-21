@@ -10,6 +10,9 @@ export default function Layout() {
         <NavLink to="/calls" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
           Qo'ng'iroqlar
         </NavLink>
+        <NavLink to="/sotuvchi" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
+          Sotuvchi
+        </NavLink>
         <NavLink to="/settings" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}>
           Sozlamalar
         </NavLink>

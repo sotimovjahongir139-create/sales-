@@ -44,7 +44,20 @@ export default function Calls() {
     } catch (err) {
       const message = err.response?.data?.error || 'Tahlilda xatolik yuz berdi.';
       setRowErrors((prev) => ({ ...prev, [callId]: message }));
-      setCalls((prev) => prev.map((c) => (c.id === callId ? { ...c, analysisStatus: 'FAILED' } : c)));
+      // The POST failure response only carries the generic message — the real
+      // analysisError (needed to tell a quota hiccup from a genuine failure)
+      // is only on the call record, so re-fetch it.
+      try {
+        const fresh = await api.get(`/calls/${callId}`);
+        const updated = fresh.data.call;
+        setCalls((prev) =>
+          prev.map((c) =>
+            c.id === callId ? { ...c, analysisStatus: updated.analysisStatus, analysisError: updated.analysisError } : c
+          )
+        );
+      } catch {
+        setCalls((prev) => prev.map((c) => (c.id === callId ? { ...c, analysisStatus: 'FAILED' } : c)));
+      }
     } finally {
       setAnalyzingId(null);
     }

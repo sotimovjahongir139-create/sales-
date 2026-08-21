@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
-import { formatDateTimeUz, formatDuration, scoreColor, DIRECTION_LABELS } from '../lib/format';
+import { formatDateTimeUz, formatDuration, scoreColor, isQuotaError, DIRECTION_LABELS } from '../lib/format';
 
 const SKILL_LABELS = {
   communication: 'Muloqot',
@@ -104,7 +104,13 @@ export default function CallDetail() {
               )}
               {call.analysisStatus === 'FAILED' && (
                 <div>
-                  <div className="error-text">Tahlilda xatolik yuz berdi.</div>
+                  {isQuotaError(call.analysisError) ? (
+                    <div className="error-text" style={{ color: 'var(--warning)' }}>
+                      AI kvotasi tugagan. Birozdan so'ng qayta urining.
+                    </div>
+                  ) : (
+                    <div className="error-text">Tahlilda xatolik yuz berdi.</div>
+                  )}
                   <button className="analyze-btn" onClick={handleAnalyze} disabled={analyzing}>
                     Qayta urinish
                   </button>

@@ -10,6 +10,7 @@ const callsRoutes = require('./routes/calls.routes');
 const syncRoutes = require('./routes/sync.routes');
 const healthRoutes = require('./routes/health.routes');
 const settingsRoutes = require('./routes/settings.routes');
+const salespersonRoutes = require('./routes/salesperson.routes');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/calls', callsRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/salesperson', salespersonRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

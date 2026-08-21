@@ -19,6 +19,17 @@ async function analyzeCall(callId) {
     const { result, raw } = await gemini.analyzeCallRecording(call.recordingUrl);
 
     await prisma.$transaction(async (tx) => {
+      // Re-analyzing a call that already has a result (retry after a later
+      // failure, or a deliberate re-run) must replace it, not collide with
+      // CallAnalysis.callId's unique constraint — clear any prior result
+      // (and its children, no cascade configured) first.
+      const existing = await tx.callAnalysis.findUnique({ where: { callId: call.id } });
+      if (existing) {
+        await tx.callMistake.deleteMany({ where: { callAnalysisId: existing.id } });
+        await tx.recommendation.deleteMany({ where: { callAnalysisId: existing.id } });
+        await tx.callAnalysis.delete({ where: { id: existing.id } });
+      }
+
       const analysis = await tx.callAnalysis.create({
         data: {
           callId: call.id,

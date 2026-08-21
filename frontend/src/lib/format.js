@@ -20,6 +20,22 @@ export const ANALYSIS_STATUS_LABELS = {
   FAILED: 'Xatolik',
 };
 
+// Distinguishes "Gemini kvotasi tugagan, keyinroq o'zi tuzaladi" from a
+// genuine per-call failure — same underlying analysisStatus (FAILED), but a
+// very different, distinct message to the user: this one WILL succeed on
+// retry once quota resets, a real failure might not.
+export function isQuotaError(analysisError) {
+  if (!analysisError) return false;
+  return /RESOURCE_EXHAUSTED|quota/i.test(analysisError);
+}
+
+export function analysisStatusLabel(call) {
+  if (call.analysisStatus === 'FAILED' && isQuotaError(call.analysisError)) {
+    return 'Kvota tugagan';
+  }
+  return ANALYSIS_STATUS_LABELS[call.analysisStatus] || call.analysisStatus;
+}
+
 export const DIRECTION_LABELS = {
   IN: 'Kiruvchi',
   OUT: 'Chiquvchi',
