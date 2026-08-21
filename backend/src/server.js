@@ -4,6 +4,7 @@ const cors = require('cors');
 const env = require('./config/env');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
 const { startScheduler } = require('./jobs/scheduler');
+const { startAnalysisWorker } = require('./jobs/analysisWorker');
 
 const dashboardRoutes = require('./routes/dashboard.routes');
 const callsRoutes = require('./routes/calls.routes');
@@ -31,4 +32,5 @@ app.use(errorHandler);
 app.listen(env.port, () => {
   console.log(`AI Sales Call Analyzer backend ${env.port}-portda ishga tushdi.`);
   startScheduler();
+  startAnalysisWorker();
 });

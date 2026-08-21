@@ -36,6 +36,23 @@ export function analysisStatusLabel(call) {
   return ANALYSIS_STATUS_LABELS[call.analysisStatus] || call.analysisStatus;
 }
 
+// badge-{gray,blue,green,amber,red} — see .badge-* in styles.css.
+export function statusBadgeClass(call) {
+  if (call.analysisStatus === 'FAILED') {
+    return isQuotaError(call.analysisError) ? 'badge-amber' : 'badge-red';
+  }
+  if (call.analysisStatus === 'PROCESSING') return 'badge-blue';
+  if (call.analysisStatus === 'COMPLETED') return 'badge-green';
+  return 'badge-gray'; // NOT_ANALYZED
+}
+
+export function scoreBadgeClass(score) {
+  if (score === null || score === undefined) return 'badge-gray';
+  if (score >= 80) return 'badge-green';
+  if (score >= 60) return 'badge-amber';
+  return 'badge-red';
+}
+
 export const DIRECTION_LABELS = {
   IN: 'Kiruvchi',
   OUT: 'Chiquvchi',

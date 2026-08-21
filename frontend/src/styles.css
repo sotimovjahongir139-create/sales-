@@ -1,57 +1,23 @@
 :root {
   color-scheme: light;
-  --surface-1: #fcfcfb;
-  --page: #f9f9f7;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
-  --gridline: #e1e0d9;
-  --baseline: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --accent: #2a78d6;
-  --accent-soft: #cde2fb;
-  --good: #0ca30c;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #d03b3b;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --surface-1: #1a1a19;
-    --page: #0d0d0d;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
-    --gridline: #2c2c2a;
-    --baseline: #383835;
-    --border: rgba(255, 255, 255, 0.1);
-    --accent: #3987e5;
-    --accent-soft: #184f95;
-    --good: #0ca30c;
-    --warning: #fab219;
-    --serious: #ec835a;
-    --critical: #e66767;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --surface-1: #1a1a19;
-  --page: #0d0d0d;
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
-  --gridline: #2c2c2a;
-  --baseline: #383835;
-  --border: rgba(255, 255, 255, 0.1);
-  --accent: #3987e5;
-  --accent-soft: #184f95;
-  --good: #0ca30c;
-  --warning: #fab219;
-  --serious: #ec835a;
-  --critical: #e66767;
+  --page: #f5f7fa;
+  --surface-1: #ffffff;
+  --text-primary: #101828;
+  --text-secondary: #475467;
+  --text-muted: #98a2b3;
+  --gridline: #eef1f5;
+  --border: #e4e7ec;
+  --accent: #2563eb;
+  --accent-soft: #eaf1ff;
+  --good: #16a34a;
+  --good-soft: #e7f7ed;
+  --warning: #b45309;
+  --warning-soft: #fef3e2;
+  --serious: #c2410c;
+  --critical: #dc2626;
+  --critical-soft: #fdeaea;
+  --gray-soft: #f2f4f7;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.07);
 }
 
 * { box-sizing: border-box; }
@@ -60,7 +26,8 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 button, input {
@@ -73,7 +40,7 @@ button, input {
 }
 
 .sidebar {
-  width: 220px;
+  width: 224px;
   flex-shrink: 0;
   background: var(--surface-1);
   border-right: 1px solid var(--border);
@@ -87,7 +54,14 @@ button, input {
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
+  font-weight: 500;
   margin-bottom: 4px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.sidebar-link:hover {
+  background: var(--gray-soft);
+  color: var(--text-primary);
 }
 
 .sidebar-link.active {
@@ -107,7 +81,7 @@ button, input {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 24px;
+  padding: 16px 28px;
   background: var(--surface-1);
   border-bottom: 1px solid var(--border);
 }
@@ -115,6 +89,7 @@ button, input {
 .topbar-title {
   font-weight: 700;
   font-size: 16px;
+  color: var(--text-primary);
 }
 
 .topbar-right {
@@ -123,6 +98,7 @@ button, input {
   gap: 16px;
   font-size: 14px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .logout-btn {
@@ -135,7 +111,7 @@ button, input {
 }
 
 .content {
-  padding: 24px;
+  padding: 28px;
   overflow-x: auto;
 }
 
@@ -150,7 +126,8 @@ button, input {
 .login-card {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
   padding: 32px;
   width: 320px;
 }
@@ -170,6 +147,7 @@ button, input {
   font-size: 13px;
   color: var(--text-secondary);
   margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .field input {
@@ -177,9 +155,15 @@ button, input {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--page);
+  background: var(--surface-1);
   color: var(--text-primary);
   font-size: 14px;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .primary-btn {
@@ -207,24 +191,30 @@ button, input {
 
 .period-switcher {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   margin-bottom: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  width: fit-content;
 }
 
 .period-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface-1);
+  padding: 8px 18px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
   color: var(--text-secondary);
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
 }
 
 .period-btn.active {
   background: var(--accent);
-  border-color: var(--accent);
   color: white;
+  font-weight: 600;
 }
 
 .period-nav {
@@ -244,50 +234,73 @@ button, input {
   font-size: 13px;
 }
 
+.period-nav button:hover {
+  background: var(--gray-soft);
+}
+
 .period-nav .range-label {
   font-weight: 600;
   font-size: 14px;
+  color: var(--text-primary);
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
   margin-bottom: 24px;
 }
 
 .stat-tile {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 18px 20px;
+}
+
+.stat-tile .stat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
 }
 
 .stat-tile .label {
   font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .stat-tile .value {
   font-size: 26px;
   font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 
 .panel {
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+  margin-bottom: 20px;
 }
 
 .panel h3 {
   margin: 0 0 16px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  font-weight: 700;
 }
 
 .bar-row {
@@ -295,38 +308,39 @@ button, input {
   grid-template-columns: 160px 1fr 40px;
   align-items: center;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   font-size: 13px;
 }
 
 .bar-row .bar-label {
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .bar-track {
-  height: 10px;
-  background: var(--gridline);
-  border-radius: 4px;
+  height: 8px;
+  background: var(--gray-soft);
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
   background: var(--accent);
-  border-radius: 4px;
+  border-radius: 999px;
 }
 
 .bar-row .bar-value {
   text-align: right;
   font-variant-numeric: tabular-nums;
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .empty-state {
   color: var(--text-muted);
   font-size: 14px;
-  padding: 20px 0;
+  padding: 24px 0;
   text-align: center;
 }
 
@@ -340,37 +354,59 @@ table.data-table th {
   text-align: left;
   color: var(--text-muted);
   font-weight: 600;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--gridline);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
 
 table.data-table td {
-  padding: 10px;
+  padding: 12px 10px;
   border-bottom: 1px solid var(--gridline);
   white-space: nowrap;
+  color: var(--text-primary);
 }
 
 table.data-table tbody tr {
   cursor: pointer;
+  transition: background 0.1s;
 }
 
 table.data-table tbody tr:hover {
-  background: var(--page);
+  background: var(--gray-soft);
 }
 
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-gray { background: var(--gray-soft); color: var(--text-secondary); }
+.badge-blue { background: var(--accent-soft); color: var(--accent); }
+.badge-green { background: var(--good-soft); color: var(--good); }
+.badge-amber { background: var(--warning-soft); color: var(--warning); }
+.badge-red { background: var(--critical-soft); color: var(--critical); }
+
 .score-badge {
-  display: inline-block;
-  padding: 2px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 3px 8px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  color: white;
 }
 
 .status-tag {
   font-size: 12px;
-  color: var(--text-secondary);
 }
 
 .weekday-grid {
@@ -381,20 +417,23 @@ table.data-table tbody tr:hover {
 
 .weekday-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 12px;
+  padding: 14px 12px;
   text-align: center;
+  background: var(--surface-1);
 }
 
 .weekday-card .day-label {
   font-size: 13px;
   color: var(--text-secondary);
   margin-bottom: 6px;
+  font-weight: 500;
 }
 
 .weekday-card .day-calls {
   font-size: 20px;
   font-weight: 700;
+  color: var(--text-primary);
 }
 
 .weekday-card .day-score {
@@ -417,7 +456,7 @@ table.data-table tbody tr:hover {
   display: grid;
   grid-template-columns: 50px 90px 1fr;
   gap: 10px;
-  padding: 8px 0;
+  padding: 9px 0;
   border-bottom: 1px solid var(--gridline);
   font-size: 13px;
 }
@@ -431,9 +470,10 @@ table.data-table tbody tr:hover {
 
 .mistake-card {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px;
+  border-radius: 12px;
+  padding: 16px;
   margin-bottom: 12px;
+  background: var(--surface-1);
 }
 
 .mistake-card .mistake-header {
@@ -446,9 +486,8 @@ table.data-table tbody tr:hover {
 .severity-badge {
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 3px 10px;
   border-radius: 999px;
-  color: white;
   text-transform: uppercase;
 }
 
@@ -459,12 +498,14 @@ table.data-table tbody tr:hover {
 .mistake-card dt {
   font-size: 12px;
   color: var(--text-muted);
-  margin-top: 8px;
+  margin-top: 10px;
+  font-weight: 600;
 }
 
 .mistake-card dd {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: 13px;
+  color: var(--text-primary);
 }
 
 .analyze-btn {
@@ -476,6 +517,10 @@ table.data-table tbody tr:hover {
   font-weight: 600;
   cursor: pointer;
   font-size: 14px;
+}
+
+.analyze-btn:hover:not(:disabled) {
+  background: #1d4ed8;
 }
 
 .analyze-btn:disabled {
@@ -496,7 +541,7 @@ table.data-table tbody tr:hover {
 }
 
 .analyze-btn-sm:hover {
-  opacity: 0.9;
+  background: #1d4ed8;
 }
 
 .status-pill {

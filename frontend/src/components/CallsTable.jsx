@@ -1,5 +1,13 @@
 import { useNavigate } from 'react-router-dom';
-import { formatDuration, formatTimeUz, scoreColor, analysisStatusLabel, isQuotaError, DIRECTION_LABELS } from '../lib/format';
+import {
+  formatDuration,
+  formatTimeUz,
+  analysisStatusLabel,
+  statusBadgeClass,
+  scoreBadgeClass,
+  isQuotaError,
+  DIRECTION_LABELS,
+} from '../lib/format';
 
 export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze }) {
   const navigate = useNavigate();
@@ -36,15 +44,17 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
               <td>{formatDuration(call.durationSeconds)}</td>
               <td>
                 {call.overallScore !== null ? (
-                  <span className="score-badge" style={{ background: scoreColor(call.overallScore) }}>
-                    {call.overallScore}
-                  </span>
+                  <span className={`score-badge ${scoreBadgeClass(call.overallScore)}`}>{call.overallScore}</span>
                 ) : (
                   '—'
                 )}
               </td>
               <td className="status-tag">
-                {isAnalyzing ? 'Tahlil qilinmoqda...' : analysisStatusLabel(call)}
+                {isAnalyzing ? (
+                  <span className="badge badge-blue">Tahlil qilinmoqda...</span>
+                ) : (
+                  <span className={`badge ${statusBadgeClass(call)}`}>{analysisStatusLabel(call)}</span>
+                )}
               </td>
               <td onClick={(e) => e.stopPropagation()}>
                 {canAnalyze && !isAnalyzing && (
@@ -52,13 +62,12 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
                     {call.analysisStatus === 'FAILED' ? 'Qayta urinish' : 'Tahlil qilish'}
                   </button>
                 )}
-                {isAnalyzing && <span className="status-pill">Tahlil qilinmoqda...</span>}
                 {!canAnalyze && !isAnalyzing && call.analysisStatus === 'NOT_ANALYZED' && (
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Audio yo'q</span>
                 )}
                 {quotaFailed && !isAnalyzing && (
                   <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>
-                    AI kvotasi tugagan, birozdan so'ng qayta urining.
+                    Birozdan so'ng qayta urining.
                   </div>
                 )}
                 {rowError && <div className="error-text" style={{ fontSize: 12, marginTop: 4 }}>{rowError}</div>}

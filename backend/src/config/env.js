@@ -23,6 +23,7 @@ const env = {
 
   timezone: process.env.TIMEZONE || 'Asia/Tashkent',
   syncIntervalMinutes: parseInt(process.env.SYNC_INTERVAL_MINUTES || '5', 10),
+  analysisWorkerIntervalMinutes: parseInt(process.env.ANALYSIS_WORKER_INTERVAL_MINUTES || '3', 10),
 
   asadbekAmocrmUserId: process.env.ASADBEK_AMOCRM_USER_ID || '',
   asadbekName: process.env.ASADBEK_NAME || 'Asadbek',
