@@ -3,6 +3,7 @@ const { CUTOFF_DATE } = require('../lib/callsCutoff');
 
 const RECENT_ITEMS_LIMIT = 8; // dedupe recent calls' points rather than a full
 // frequency count — reasonable for the current single-salesperson MVP scale.
+const RECENT_CALLS_LIMIT = 8;
 
 function average(values) {
   if (values.length === 0) return null;
@@ -26,7 +27,7 @@ async function getSummary() {
 
   const analyses = await prisma.callAnalysis.findMany({
     where: { call: { startedAt: { gte: CUTOFF_DATE } } },
-    include: { mistakes: true, recommendations: true },
+    include: { mistakes: true, recommendations: true, call: true },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -45,8 +46,17 @@ async function getSummary() {
       strengths: [],
       mistakes: [],
       recommendations: [],
+      recentCalls: [],
     };
   }
+
+  const recentCalls = analyses.slice(0, RECENT_CALLS_LIMIT).map((a) => ({
+    id: a.call.id,
+    startedAt: a.call.startedAt,
+    customerName: a.call.customerName,
+    customerPhone: a.call.customerPhone,
+    overallScore: a.overallScore,
+  }));
 
   const strengths = dedupeRecent(
     analyses.flatMap((a) => (Array.isArray(a.strengths) ? a.strengths : [])),
@@ -77,6 +87,7 @@ async function getSummary() {
     strengths,
     mistakes,
     recommendations,
+    recentCalls,
   };
 }
 

@@ -4,6 +4,7 @@ const prisma = require('../lib/prisma');
 const analysisService = require('../services/analysis.service');
 const autoAnalysisQuota = require('../services/autoAnalysisQuota.service');
 const { isQuotaError, isDailyQuotaError } = require('../lib/geminiErrors');
+const { CUTOFF_DATE } = require('../lib/callsCutoff');
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -23,11 +24,20 @@ async function runOnce() {
   const capped = await autoAnalysisQuota.isCappedToday();
   if (capped) return { skipped: 'daily auto-analysis cap reached' };
 
-  // Oldest first — clears the backlog steadily day over day instead of
-  // jumping around. One call per tick keeps this naturally rate-limited
-  // without extra delay logic.
+  // Oldest first (within scope) — clears the real backlog steadily day over
+  // day instead of jumping around. The startedAt floor matters a lot here:
+  // without it this picks the oldest NOT_ANALYZED row in the whole table,
+  // which is pre-cutoff backlog (confirmed directly: 1403 pre-cutoff calls
+  // are eligible vs 823 in-scope ones) — the worker would spend its entire
+  // daily budget on calls no user-facing view ever shows, for months,
+  // before ever reaching real data. One call per tick keeps this naturally
+  // rate-limited without extra delay logic.
   const call = await prisma.call.findFirst({
-    where: { analysisStatus: 'NOT_ANALYZED', recordingUrl: { not: null } },
+    where: {
+      analysisStatus: 'NOT_ANALYZED',
+      recordingUrl: { not: null },
+      startedAt: { gte: CUTOFF_DATE },
+    },
     orderBy: { startedAt: 'asc' },
   });
 

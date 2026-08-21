@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import SkillsPanel from '../components/SkillsPanel';
-import { scoreColor } from '../lib/format';
+import { scoreColor, scoreBadgeClass, formatDateTimeUz } from '../lib/format';
 
 export default function Sotuvchi() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     api
@@ -32,18 +34,19 @@ export default function Sotuvchi() {
 
   return (
     <div>
-      <div className="panel">
-        <h3>{name}</h3>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-          {summary.analyzedCallsCount} ta tahlil qilingan qo'ng'iroq asosida
-        </p>
-        <div style={{ fontSize: 32, fontWeight: 700, color: scoreColor(summary.overallScore) }}>
-          {summary.overallScore} / 100
+      <div className="call-detail-grid">
+        <div className="panel">
+          <h3>{name}</h3>
+          <div style={{ fontSize: 40, fontWeight: 700, color: scoreColor(summary.overallScore), letterSpacing: '-0.02em' }}>
+            {summary.overallScore} <span style={{ fontSize: 20, color: 'var(--text-muted)', fontWeight: 600 }}>/ 100</span>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>
+            O'rtacha ball — {summary.analyzedCallsCount} ta tahlil qilingan qo'ng'iroq asosida
+          </p>
         </div>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>O'rtacha ball</p>
-      </div>
 
-      <SkillsPanel skills={summary.skills} />
+        <SkillsPanel skills={summary.skills} />
+      </div>
 
       <div className="panel">
         <h3>Kuchli tomonlar</h3>
@@ -74,6 +77,32 @@ export default function Sotuvchi() {
           ))}
         </ul>
       </div>
+
+      {summary.recentCalls?.length > 0 && (
+        <div className="panel">
+          <h3>So'nggi tahlil qilingan qo'ng'iroqlar</h3>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Mijoz</th>
+                <th>AI baho</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.recentCalls.map((c) => (
+                <tr key={c.id} onClick={() => navigate(`/calls/${c.id}`)}>
+                  <td>{formatDateTimeUz(c.startedAt)}</td>
+                  <td>{c.customerName || c.customerPhone || "Noma'lum"}</td>
+                  <td>
+                    <span className={`score-badge ${scoreBadgeClass(c.overallScore)}`}>{c.overallScore}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
