@@ -1,4 +1,5 @@
 const prisma = require('../lib/prisma');
+const { CUTOFF_DATE } = require('../lib/callsCutoff');
 
 const RECENT_ITEMS_LIMIT = 8; // dedupe recent calls' points rather than a full
 // frequency count — reasonable for the current single-salesperson MVP scale.
@@ -24,6 +25,7 @@ async function getSummary() {
   const salesperson = await prisma.salesperson.findFirst({ where: { active: true } });
 
   const analyses = await prisma.callAnalysis.findMany({
+    where: { call: { startedAt: { gte: CUTOFF_DATE } } },
     include: { mistakes: true, recommendations: true },
     orderBy: { createdAt: 'desc' },
   });

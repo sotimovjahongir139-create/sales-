@@ -12,20 +12,24 @@ const client = axios.create({
 // Call notes live on leads and contacts as note_type call_in / call_out.
 // params typically contains: uniq, duration, source, link (recording URL, often null
 // depending on the connected telephony integration), phone, call_result, call_status.
-// See project README for the amoCRM investigation notes on why attribution to a
-// specific salesperson currently requires the telephony provider's own API.
-async function fetchCallNotes({ entityType, page = 1, limit = 250, sinceUnix } = {}) {
+//
+// Ordering/filtering by created_at is confirmed unreliable for this endpoint —
+// order[created_at]=desc does not return newest-first (verified directly:
+// page 1 came back as 2024 data while much newer notes existed), and
+// filter[created_at][from] is silently ignored entirely (verified: 250/250
+// results were before the requested cutoff). order[id]=desc, by contrast, IS
+// reliably newest-first (verified directly against the live account) — note
+// ids track true insertion order even when the created_at field doesn't
+// sort correctly. Always use id for both ordering and cursoring here.
+async function fetchCallNotes({ entityType, page = 1, limit = 250 } = {}) {
   const path = entityType === 'contacts' ? '/contacts/notes' : '/leads/notes';
   const params = {
     'filter[note_type][0]': 'call_in',
     'filter[note_type][1]': 'call_out',
-    'order[created_at]': 'desc',
+    'order[id]': 'desc',
     limit,
     page,
   };
-  if (sinceUnix) {
-    params['filter[created_at][from]'] = sinceUnix;
-  }
   try {
     const res = await client.get(path, { params });
     return res.data?._embedded?.notes || [];

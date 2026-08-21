@@ -3,6 +3,7 @@ const { ApiError } = require('../middleware/errorHandler');
 const prisma = require('../lib/prisma');
 const dateRange = require('../lib/dateRange');
 const analysisService = require('../services/analysis.service');
+const { CUTOFF_DATE } = require('../lib/callsCutoff');
 
 const router = express.Router();
 
@@ -12,11 +13,15 @@ const MAX_LIMIT = 500;
 router.get('/', async (req, res, next) => {
   try {
     const { period, date } = req.query;
-    const where = {};
+    // Hard floor, always applied — pre-cutoff calls (old backlog, or from
+    // the unattributed telephony stream) are excluded even if a period
+    // param would otherwise ask for an earlier range.
+    const where = { startedAt: { gte: CUTOFF_DATE } };
     if (period && ['daily', 'weekly', 'monthly'].includes(period)) {
       const range = dateRange.getRange(period, date);
+      const periodStart = dateRange.toZonedJSDate(range.start);
       where.startedAt = {
-        gte: dateRange.toZonedJSDate(range.start),
+        gte: periodStart > CUTOFF_DATE ? periodStart : CUTOFF_DATE,
         lte: dateRange.toZonedJSDate(range.end),
       };
     }

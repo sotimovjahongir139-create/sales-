@@ -1,6 +1,7 @@
 const { DateTime } = require('luxon');
 const prisma = require('../lib/prisma');
 const dateRange = require('../lib/dateRange');
+const { CUTOFF_DATE } = require('../lib/callsCutoff');
 
 const WEEKDAY_LABELS_UZ = ['Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba', 'Yakshanba'];
 const CALLS_LIST_LIMIT = 100;
@@ -99,11 +100,13 @@ function buildMonthlyBreakdown(calls, monthStart, monthEnd) {
 
 async function getDashboard(period, dateStr) {
   const range = dateRange.getRange(period, dateStr);
+  const periodStart = dateRange.toZonedJSDate(range.start);
 
   const calls = await prisma.call.findMany({
     where: {
+      // Hard floor, always applied — see lib/callsCutoff.js.
       startedAt: {
-        gte: dateRange.toZonedJSDate(range.start),
+        gte: periodStart > CUTOFF_DATE ? periodStart : CUTOFF_DATE,
         lte: dateRange.toZonedJSDate(range.end),
       },
     },
