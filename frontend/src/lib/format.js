@@ -29,21 +29,44 @@ export function isQuotaError(analysisError) {
   return /RESOURCE_EXHAUSTED|quota/i.test(analysisError);
 }
 
-export function analysisStatusLabel(call) {
+// Mirrors backend/src/lib/geminiErrors.js's isDailyQuotaError — only a
+// per-day cap justifies "ertaga urinib ko'ring" copy; a short per-minute
+// throttle clears itself in seconds and shouldn't tell someone to wait a day.
+export function isDailyQuotaError(analysisError) {
+  if (!analysisError) return false;
+  return /PerDay/i.test(analysisError);
+}
+
+export function quotaErrorMessage(analysisError) {
+  return isDailyQuotaError(analysisError)
+    ? "Kvota tugagan, ertaga urinib ko'ring."
+    : 'Kvota vaqtincha tugagan, birozdan so\'ng qayta urining.';
+}
+
+// isCappedAndEligible: true when the automatic worker has hit today's cap
+// AND this specific call would otherwise have been eligible for it (has a
+// recording, not yet analyzed) — that's the "Navbatda" case: calm, honest,
+// not an error. A call with no recording is unaffected by the cap at all,
+// it was never going anywhere regardless — stays "Audio yo'q".
+export function analysisStatusLabel(call, workerStatus) {
   if (call.analysisStatus === 'FAILED' && isQuotaError(call.analysisError)) {
     return 'Kvota tugagan';
+  }
+  if (call.analysisStatus === 'NOT_ANALYZED' && call.recordingUrl && workerStatus?.cappedToday) {
+    return 'Navbatda';
   }
   return ANALYSIS_STATUS_LABELS[call.analysisStatus] || call.analysisStatus;
 }
 
 // badge-{gray,blue,green,amber,red} — see .badge-* in styles.css.
-export function statusBadgeClass(call) {
+export function statusBadgeClass(call, workerStatus) {
   if (call.analysisStatus === 'FAILED') {
     return isQuotaError(call.analysisError) ? 'badge-amber' : 'badge-red';
   }
   if (call.analysisStatus === 'PROCESSING') return 'badge-blue';
   if (call.analysisStatus === 'COMPLETED') return 'badge-green';
-  return 'badge-gray'; // NOT_ANALYZED
+  if (call.analysisStatus === 'NOT_ANALYZED' && call.recordingUrl && workerStatus?.cappedToday) return 'badge-blue';
+  return 'badge-gray'; // NOT_ANALYZED, not capped (or no recording)
 }
 
 export function scoreBadgeClass(score) {

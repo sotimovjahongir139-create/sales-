@@ -6,10 +6,11 @@ import {
   statusBadgeClass,
   scoreBadgeClass,
   isQuotaError,
+  quotaErrorMessage,
   DIRECTION_LABELS,
 } from '../lib/format';
 
-export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze }) {
+export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze, workerStatus }) {
   const navigate = useNavigate();
 
   if (!calls || calls.length === 0) {
@@ -35,6 +36,7 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
           const rowError = rowErrors?.[call.id];
           const canAnalyze = call.recordingUrl && (call.analysisStatus === 'NOT_ANALYZED' || call.analysisStatus === 'FAILED');
           const quotaFailed = call.analysisStatus === 'FAILED' && isQuotaError(call.analysisError);
+          const queued = call.analysisStatus === 'NOT_ANALYZED' && call.recordingUrl && workerStatus?.cappedToday;
 
           return (
             <tr key={call.id} onClick={() => navigate(`/calls/${call.id}`)}>
@@ -53,7 +55,9 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
                 {isAnalyzing ? (
                   <span className="badge badge-blue">Tahlil qilinmoqda...</span>
                 ) : (
-                  <span className={`badge ${statusBadgeClass(call)}`}>{analysisStatusLabel(call)}</span>
+                  <span className={`badge ${statusBadgeClass(call, workerStatus)}`}>
+                    {analysisStatusLabel(call, workerStatus)}
+                  </span>
                 )}
               </td>
               <td onClick={(e) => e.stopPropagation()}>
@@ -65,9 +69,14 @@ export default function CallsTable({ calls, analyzingId, rowErrors, onAnalyze })
                 {!canAnalyze && !isAnalyzing && call.analysisStatus === 'NOT_ANALYZED' && (
                   <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Audio yo'q</span>
                 )}
+                {queued && !isAnalyzing && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                    Ertaga avtomatik tahlil qilinadi.
+                  </div>
+                )}
                 {quotaFailed && !isAnalyzing && (
                   <div style={{ fontSize: 12, color: 'var(--warning)', marginTop: 4 }}>
-                    Birozdan so'ng qayta urining.
+                    {quotaErrorMessage(call.analysisError)}
                   </div>
                 )}
                 {rowError && <div className="error-text" style={{ fontSize: 12, marginTop: 4 }}>{rowError}</div>}

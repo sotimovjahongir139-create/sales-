@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api/client';
-import { formatDateTimeUz, formatDuration, scoreColor, isQuotaError, DIRECTION_LABELS } from '../lib/format';
+import { formatDateTimeUz, formatDuration, scoreColor, isQuotaError, quotaErrorMessage, DIRECTION_LABELS } from '../lib/format';
 
 const SKILL_LABELS = {
   communication: 'Muloqot',
@@ -25,6 +25,7 @@ export default function CallDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
+  const [workerStatus, setWorkerStatus] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -40,6 +41,13 @@ export default function CallDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    api
+      .get('/analysis-worker/status')
+      .then((res) => setWorkerStatus(res.data))
+      .catch(() => setWorkerStatus(null));
+  }, []);
 
   async function handleAnalyze() {
     setAnalyzing(true);
@@ -92,9 +100,16 @@ export default function CallDetail() {
 
             <div style={{ marginTop: 16 }}>
               {call.analysisStatus === 'NOT_ANALYZED' && (
-                <button className="analyze-btn" onClick={handleAnalyze} disabled={analyzing || !call.recordingUrl}>
-                  Tahlil qilish
-                </button>
+                <div>
+                  {call.recordingUrl && workerStatus?.cappedToday && (
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>
+                      Navbatda — ertaga avtomatik tahlil qilinadi, yoki hozir qo'lda tahlil qilishingiz mumkin.
+                    </div>
+                  )}
+                  <button className="analyze-btn" onClick={handleAnalyze} disabled={analyzing || !call.recordingUrl}>
+                    Tahlil qilish
+                  </button>
+                </div>
               )}
               {call.analysisStatus === 'PROCESSING' && <span className="status-pill">Tahlil qilinmoqda...</span>}
               {call.analysisStatus === 'COMPLETED' && (
@@ -106,7 +121,7 @@ export default function CallDetail() {
                 <div>
                   {isQuotaError(call.analysisError) ? (
                     <div className="error-text" style={{ color: 'var(--warning)' }}>
-                      AI kvotasi tugagan. Birozdan so'ng qayta urining.
+                      {quotaErrorMessage(call.analysisError)}
                     </div>
                   ) : (
                     <div className="error-text">Tahlilda xatolik yuz berdi.</div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client';
 import CallsTable from '../components/CallsTable';
+import { isQuotaError } from '../lib/format';
 
 export default function Calls() {
   const [calls, setCalls] = useState([]);
@@ -9,6 +10,7 @@ export default function Calls() {
   const [error, setError] = useState('');
   const [analyzingId, setAnalyzingId] = useState(null);
   const [rowErrors, setRowErrors] = useState({});
+  const [workerStatus, setWorkerStatus] = useState(null);
 
   useEffect(() => {
     api
@@ -24,6 +26,11 @@ export default function Calls() {
       })
       .catch((err) => setError(err.response?.data?.error || "Ma'lumotlarni yuklashda xatolik yuz berdi."))
       .finally(() => setLoading(false));
+
+    api
+      .get('/analysis-worker/status')
+      .then((res) => setWorkerStatus(res.data))
+      .catch(() => setWorkerStatus(null));
   }, []);
 
   async function handleAnalyze(callId) {
@@ -42,11 +49,9 @@ export default function Calls() {
         )
       );
     } catch (err) {
-      const message = err.response?.data?.error || 'Tahlilda xatolik yuz berdi.';
-      setRowErrors((prev) => ({ ...prev, [callId]: message }));
-      // The POST failure response only carries the generic message — the real
-      // analysisError (needed to tell a quota hiccup from a genuine failure)
-      // is only on the call record, so re-fetch it.
+      // The POST failure response only carries a generic message — the real
+      // analysisError (needed to tell a quota hiccup from a genuine failure,
+      // and to show the right one, not both) is only on the call record.
       try {
         const fresh = await api.get(`/calls/${callId}`);
         const updated = fresh.data.call;
@@ -55,7 +60,11 @@ export default function Calls() {
             c.id === callId ? { ...c, analysisStatus: updated.analysisStatus, analysisError: updated.analysisError } : c
           )
         );
+        if (!isQuotaError(updated.analysisError)) {
+          setRowErrors((prev) => ({ ...prev, [callId]: err.response?.data?.error || 'Tahlilda xatolik yuz berdi.' }));
+        }
       } catch {
+        setRowErrors((prev) => ({ ...prev, [callId]: err.response?.data?.error || 'Tahlilda xatolik yuz berdi.' }));
         setCalls((prev) => prev.map((c) => (c.id === callId ? { ...c, analysisStatus: 'FAILED' } : c)));
       }
     } finally {
@@ -75,7 +84,13 @@ export default function Calls() {
         {loading && <div className="empty-state">Yuklanmoqda...</div>}
         {error && <div className="error-text">{error}</div>}
         {!loading && !error && (
-          <CallsTable calls={calls} analyzingId={analyzingId} rowErrors={rowErrors} onAnalyze={handleAnalyze} />
+          <CallsTable
+            calls={calls}
+            analyzingId={analyzingId}
+            rowErrors={rowErrors}
+            onAnalyze={handleAnalyze}
+            workerStatus={workerStatus}
+          />
         )}
       </div>
     </div>

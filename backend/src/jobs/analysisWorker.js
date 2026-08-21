@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const env = require('../config/env');
 const prisma = require('../lib/prisma');
 const analysisService = require('../services/analysis.service');
+const autoAnalysisQuota = require('../services/autoAnalysisQuota.service');
 const { isQuotaError, isDailyQuotaError } = require('../lib/geminiErrors');
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
@@ -9,25 +10,41 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // In-memory only (resets on restart, same as the rest of this job's state) —
 // good enough here: a restart just means one possibly-wasted attempt before
-// the backoff re-triggers, not a real problem.
+// the backoff re-triggers, not a real problem. This is a separate safety net
+// from autoAnalysisQuota's DB-persisted daily cap below: that cap is meant
+// to stop the worker BEFORE it ever hits a real 429 from its own volume;
+// this pause handles the case where manual clicks alone already used up the
+// shared 20/day quota before the worker's own cap kicked in.
 let pausedUntil = 0;
 
 async function runOnce() {
-  if (Date.now() < pausedUntil) return { skipped: 'paused' };
+  if (Date.now() < pausedUntil) return { skipped: 'paused (quota backoff)' };
 
-  // Newest first — a sales dashboard cares more about recent calls than
-  // clearing a multi-year backlog in order. One call per tick keeps this
-  // naturally rate-limited without extra delay logic.
+  const capped = await autoAnalysisQuota.isCappedToday();
+  if (capped) return { skipped: 'daily auto-analysis cap reached' };
+
+  // Oldest first — clears the backlog steadily day over day instead of
+  // jumping around. One call per tick keeps this naturally rate-limited
+  // without extra delay logic.
   const call = await prisma.call.findFirst({
     where: { analysisStatus: 'NOT_ANALYZED', recordingUrl: { not: null } },
-    orderBy: { startedAt: 'desc' },
+    orderBy: { startedAt: 'asc' },
   });
 
   if (!call) return { skipped: 'nothing to analyze' };
 
   try {
     await analysisService.analyzeCall(call.id);
-    console.log(`[analysis-worker] analyzed call ${call.id}`);
+    const { count, justHitCap } = await autoAnalysisQuota.recordAutoAnalysis();
+    console.log(`[analysis-worker] analyzed call ${call.id} (auto ${count}/${autoAnalysisQuota.DAILY_CAP} today)`);
+
+    if (justHitCap) {
+      const status = await autoAnalysisQuota.getStatus();
+      console.log(
+        `[analysis-worker] daily auto-analysis cap reached (${count}/${autoAnalysisQuota.DAILY_CAP}). ` +
+        `Resuming at ${status.resumesAt}.`
+      );
+    }
     return { analyzed: call.id };
   } catch (err) {
     // analyzeCall stores the real Gemini/pipeline error on the call row and
@@ -39,8 +56,8 @@ async function runOnce() {
       const backoffMs = isDailyQuotaError(realError) ? ONE_DAY_MS : ONE_HOUR_MS;
       pausedUntil = Date.now() + backoffMs;
       console.log(
-        `[analysis-worker] quota exhausted, pausing until ${new Date(pausedUntil).toISOString()}. ` +
-        `Reason: ${realError}`
+        `[analysis-worker] quota exhausted (before hitting the daily auto-cap — likely manual usage), ` +
+        `pausing until ${new Date(pausedUntil).toISOString()}. Reason: ${realError}`
       );
       return { pausedFor: realError };
     }
@@ -58,7 +75,10 @@ function startAnalysisWorker() {
     runOnce().catch((err) => console.error('[analysis-worker] tick crashed:', err.message));
   });
 
-  console.log(`[analysis-worker] scheduled every ${minutes} minute(s), newest-first, respects quota backoff.`);
+  console.log(
+    `[analysis-worker] scheduled every ${minutes} minute(s), oldest-first, ` +
+    `capped at ${autoAnalysisQuota.DAILY_CAP} auto-analyses/day, respects quota backoff.`
+  );
 }
 
 module.exports = { startAnalysisWorker, runOnce };

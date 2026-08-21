@@ -12,6 +12,7 @@ const syncRoutes = require('./routes/sync.routes');
 const healthRoutes = require('./routes/health.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const salespersonRoutes = require('./routes/salesperson.routes');
+const analysisWorkerRoutes = require('./routes/analysisWorker.routes');
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/health', healthRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/salesperson', salespersonRoutes);
+app.use('/api/analysis-worker', analysisWorkerRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

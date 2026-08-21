@@ -48,7 +48,9 @@ function callToListItem(call) {
     customerPhone: call.customerPhone,
     direction: call.direction,
     durationSeconds: call.durationSeconds,
+    recordingUrl: call.recordingUrl,
     analysisStatus: call.analysisStatus,
+    analysisError: call.analysisError,
     overallScore: call.analysis?.overallScore ?? null,
   };
 }

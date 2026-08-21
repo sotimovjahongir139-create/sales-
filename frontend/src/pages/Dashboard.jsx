@@ -8,6 +8,7 @@ import TopMistakesPanel from '../components/TopMistakesPanel';
 import WeeklyBreakdown from '../components/WeeklyBreakdown';
 import MonthlyBreakdown from '../components/MonthlyBreakdown';
 import CallsTable from '../components/CallsTable';
+import { isQuotaError } from '../lib/format';
 
 export default function Dashboard() {
   const [period, setPeriod] = useState('daily');
@@ -15,6 +16,9 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [analyzingId, setAnalyzingId] = useState(null);
+  const [rowErrors, setRowErrors] = useState({});
+  const [workerStatus, setWorkerStatus] = useState(null);
 
   const load = useCallback(async (p, d) => {
     setLoading(true);
@@ -37,6 +41,13 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period]);
 
+  useEffect(() => {
+    api
+      .get('/analysis-worker/status')
+      .then((res) => setWorkerStatus(res.data))
+      .catch(() => setWorkerStatus(null));
+  }, []);
+
   function handlePeriodChange(p) {
     setPeriod(p);
   }
@@ -47,6 +58,36 @@ export default function Dashboard() {
 
   function handleNext() {
     if (data?.nextDate) load(period, data.nextDate);
+  }
+
+  function patchCall(callId, patch) {
+    setData((prev) => (prev ? { ...prev, calls: prev.calls.map((c) => (c.id === callId ? { ...c, ...patch } : c)) } : prev));
+  }
+
+  async function handleAnalyze(callId) {
+    setAnalyzingId(callId);
+    setRowErrors((prev) => ({ ...prev, [callId]: undefined }));
+    patchCall(callId, { analysisStatus: 'PROCESSING' });
+
+    try {
+      const res = await api.post(`/calls/${callId}/analyze`);
+      const updated = res.data.call;
+      patchCall(callId, { analysisStatus: updated.analysisStatus, overallScore: updated.analysis?.overallScore ?? null });
+    } catch (err) {
+      try {
+        const fresh = await api.get(`/calls/${callId}`);
+        const updated = fresh.data.call;
+        patchCall(callId, { analysisStatus: updated.analysisStatus, analysisError: updated.analysisError });
+        if (!isQuotaError(updated.analysisError)) {
+          setRowErrors((prev) => ({ ...prev, [callId]: err.response?.data?.error || 'Tahlilda xatolik yuz berdi.' }));
+        }
+      } catch {
+        setRowErrors((prev) => ({ ...prev, [callId]: err.response?.data?.error || 'Tahlilda xatolik yuz berdi.' }));
+        patchCall(callId, { analysisStatus: 'FAILED' });
+      }
+    } finally {
+      setAnalyzingId(null);
+    }
   }
 
   return (
@@ -77,7 +118,13 @@ export default function Dashboard() {
                 So'nggi {data.callsShown} ta ko'rsatilmoqda (jami {data.callsTotal} ta).
               </p>
             )}
-            <CallsTable calls={data.calls} />
+            <CallsTable
+              calls={data.calls}
+              analyzingId={analyzingId}
+              rowErrors={rowErrors}
+              onAnalyze={handleAnalyze}
+              workerStatus={workerStatus}
+            />
           </div>
         </>
       )}
